@@ -13,15 +13,22 @@
 # irccrypt module is copyright 2009 Bjorn Edstrom ( http://www.bjrn.se/ircsrp )
 # with modification from Nam T. Nguyen and trubo
 #
+# modified by kyau <kyau@kyau.org>
+#
 # Changelog:
+#   * 4.22
+#      + Fixed encrypt message sending a space before the +OK
+#      + Modified the look of encrypted messages (now uses a red + before the nick
+#      + Converted file from dos format to unix format (No more ^M)
+
 #   * 4.21
 #      + Fixed Empty Action /me
 
 #   * 4.20
-#      + Added support for Stealth mode >> no KeyExchange possible [/SET FISHSTEALTH True/False] 
+#      + Added support for Stealth mode >> no KeyExchange possible [/SET FISHSTEALTH True/False]
 
 #   * 4.19
-#      + Added support for mIRC CBC KeyExchange, https://github.com/flakes/mirc_fish_10/ 
+#      + Added support for mIRC CBC KeyExchange, https://github.com/flakes/mirc_fish_10/
 
 #   * 4.18
 #      + Buffix Topic use key from channel not context
@@ -107,7 +114,7 @@
 #      + Updates over Proxy
 
 #   * 3.25
-#      + crypted /ME+ 
+#      + crypted /ME+
 
 #   * 3.24
 #      + BugFix topic 332
@@ -140,7 +147,7 @@
 #      + Bugfixes
 
 #   * 3.13
-#      + split lines if longer then 334 Chars 
+#      + split lines if longer then 334 Chars
 #
 #   * 3.12
 #      + add PROTECTKEY to block dh1080 keyexchange on known Keys ( thx ^V^ )
@@ -158,7 +165,7 @@
 #      + some docu added
 #
 #   * 3.07:
-#      + fixed notice in channel not send to user 
+#      + fixed notice in channel not send to user
 #
 #   * 3.06:
 #	   + support for /msg /msg+ /notice /notice+ (trubo)
@@ -345,10 +352,10 @@ def proxyload(_thread,_useproxy,doExtra):
             proyxuser = proxypass = None
         socks.setdefaultproxy(proxytype,xchat.get_prefs('net_proxy_host'),xchat.get_prefs('net_proxy_port'),rdns=True,username=proxyuser,password=proxypass)
         print "\00310using xchat proxy settings \0037Type: %s Host: %s Port: %s" % (nameproxytype[proxytype],xchat.get_prefs('net_proxy_host'),xchat.get_prefs('net_proxy_port'))
-        
+
         ## Replace default socket
         socket.socket = socks.socksocket
-                    
+
     import urllib2
     _thread(urllib2,doExtra)
 
@@ -393,7 +400,7 @@ class XChatCrypt:
         self.__hooks.append(xchat.hook_command('CBCMODE', self.set_cbc, help='set or shows cbc mode for (current) channel/nick , /CBCMODE [<nick>] <0|1>'))
         self.__hooks.append(xchat.hook_command('PROTECTKEY', self.set_protect, help='sets or shows key protection mode for (current) nick, /PROTECTKEY [<nick>] <0|1>'))
         self.__hooks.append(xchat.hook_command('ENCRYPT', self.set_act, help='set or shows encryption on for (current) channel/nick , /ENCRYPT [<nick>] <0|1>'))
-        
+
         self.__hooks.append(xchat.hook_command('PRNCRYPT', self.prn_crypt, help='print msg encrpyted localy , /PRNCRYPT <msg>'))
         self.__hooks.append(xchat.hook_command('PRNDECRYPT', self.prn_decrypt, help='print msg decrpyted localy , /PRNDECRYPT <msg>'))
 
@@ -447,7 +454,7 @@ class XChatCrypt:
             print "\002\0032 ****  fishcrypt.py Version: %s %s ****" % (__module_version__,ISBETA)
             if self.config['FISHBETAVERSION']:
                 print "\0036Beta download %s" % (BETAUPDATEURL)
-            
+
             print "\0036 %s" % UPDATEURL
             print "\n"
             print " \002\00314***************** Fishcrypt Help ********************"
@@ -530,9 +537,9 @@ class XChatCrypt:
                 _doExtra = self._updateInstall
         if word[2].lower() == "load" or _doExtra:
             proxyload(self._update,useproxy,_doExtra)
-        
+
         return xchat.EAT_ALL
-        
+
     def _update(self,urllib2,doExtra):
         self.__update_thread = Thread(target=self.__update,kwargs={'urllib2':urllib2,'context':xchat.get_context(),'doExtra':doExtra},name='fishcrypt_update')
         self.__update_thread.start()
@@ -680,7 +687,7 @@ class XChatCrypt:
                 'KeyMap': self.__KeyMap,
                 'TargetMap': self.__TargetMap,
                 'Config': self.config,
-                'Version': __module_version__ 
+                'Version': __module_version__
             })
             hnd = open(os.path.join(path,'fish3.pickle'),'wb')
             if self.status['DBPASSWD']:
@@ -713,7 +720,7 @@ class XChatCrypt:
             if word[1].upper() == "FISHCRYPT":
                 fishonly = True
         if len(word) < 2 or fishonly:
-            ## not for us 
+            ## not for us
             #print "fishcrypt_pass%s%s%s: \003%r" % (COLOR['blue'],"."*16,COLOR['green'],self.status['DBPASSWD'])
             for key in self.config:
                 keyname = "%s%s" % (key,"."*20)
@@ -804,7 +811,7 @@ class XChatCrypt:
 
         ## check for encrypted Notice
         elif word_eol[3].startswith('::+OK ') or word_eol[3].startswith('::mcps '):
-            
+
             ## rewrite data to pass to default inMessage function
             ## change full ident to nick only
             nick = self.get_nick(word[0])
@@ -822,7 +829,7 @@ class XChatCrypt:
             ## if no key found exit
             if not key:
                 return xchat.EAT_NONE
-            
+
             ## decrypt the message
             try:
                 sndmessage = self.decrypt(key,message)
@@ -838,12 +845,12 @@ class XChatCrypt:
                 try:
                     message = sndmessage.decode("UTF8").encode("UTF8")
                     ## mark nick for encrypted msgg
-                    speaker = "%s %s" % ("°"*(1+isCBC),speaker)
+                    speaker = "%s%s" % ("\0034+\003"*(1+isCBC),speaker)
                 except UnicodeError:
                     try:
                         message = unicode(sndmessage,encoding='iso8859-1',errors='ignore').encode('UTF8')
                         ## mark nick for encrypted msgg
-                        speaker = "%s %s" % ("°"*(1+isCBC),speaker)
+                        speaker = "%s%s" % ("\0034+\003"*(1+isCBC),speaker)
                     except:
                         raise
                     ## send the message to local xchat
@@ -870,25 +877,25 @@ class XChatCrypt:
         ## get current nick
         target = xchat.get_context().get_info('nick')
         #print "DEBUG_notice_send: %r - %r - %r %r" % (word,word_eol,userdata,nick)
-        
+
         ## check if this is not allready processed
         if self.__chk_proc(target=target):
             return xchat.EAT_NONE
-        
+
         ## get the speakers nick only from full ident
         speaker = self.get_nick(word[0])
-        
+
         ## strip first : from notice
         message = word_eol[1][1:]
         if message.startswith('+OK ') or message.startswith('mcps '):
             ## get the key id from the speaker
             id = self.get_id(nick=speaker)
             key = self.find_key(id)
-            
+
             ## if no key available for the speaker exit
             if not key:
                 return xchat.EAT_NONE
-            
+
             ## decrypt the message
             sndmessage = self.decrypt(key,message)
             isCBC = 0
@@ -904,7 +911,7 @@ class XChatCrypt:
                 try:
                     message = sndmessage.decode("UTF8").encode("UTF8")
                     ## mark nick for encrypted msgg
-                    speaker = "%s %s" % ("°"*(1+isCBC),speaker)
+                    speaker = "%s%s" % ("\0034+\003"*(1+isCBC),speaker)
                 except:
                     ## mark nick with a question mark
                     speaker = "?%s" % (speaker)
@@ -915,7 +922,7 @@ class XChatCrypt:
             self.emit_print("Notice Send",speaker,message,target=target)
             return xchat.EAT_XCHAT
         return xchat.EAT_NONE
-            
+
     ## incoming messages
     def inMessage(self,word, word_eol, userdata):
         ## if message is allready processed ignore
@@ -938,11 +945,11 @@ class XChatCrypt:
             id = self.get_id(nick=target)
             target,network = id
             key = self.find_key(id)
-            
+
             ## if no key found exit
             if not key:
                 return xchat.EAT_NONE
-            
+
             ## decrypt the message
             try:
                 sndmessage = self.decrypt(key,message)
@@ -962,12 +969,12 @@ class XChatCrypt:
                 try:
                     message = sndmessage.decode("UTF8").encode("UTF8")
                     ## mark nick for encrypted msgg
-                    speaker = "%s %s" % ("°"*(1+isCBC),speaker)
+                    speaker = "%s%s" % ("\0034+\003"*(1+isCBC),speaker)
                 except UnicodeError:
                     try:
                         message = unicode(sndmessage,encoding='iso8859-1',errors='ignore').encode('UTF8')
                         ## mark nick for encrypted msgg
-                        speaker = "%s %s" % ("°"*(1+isCBC),speaker)
+                        speaker = "%s%s" % ("\0034+\003"*(1+isCBC),speaker)
                     except:
                         raise
                     ## send the message to local xchat
@@ -1026,18 +1033,18 @@ class XChatCrypt:
 
     ## the outgoing messages will be proccesed herre
     def outMessage(self,word, word_eol, userdata,force=False,command=False):
-        
+
         ## check if allready processed
         if self.__chk_proc():
             return xchat.EAT_NONE
-        
+
         ## get the id
         id = self.get_id()
         target,network = id
         ## check if message is prefixed wit a command like /msg /notice
         action = False
         if command:
-            
+
             if len(word) < (word[0].upper().startswith("ME") and 2 or 3):
                 print "Usage: %s <nick/channel> <message>, sends a %s.%s are a type of message that should be auto reacted to" % (word[0],word[0],word[0])
                 return xchat.EAT_ALL
@@ -1063,7 +1070,7 @@ class XChatCrypt:
         sendmsg = ''
         ## try to get a key for the target id
         key = self.find_key(id)
-        
+
         ## my own nick
         nick = xchat.get_context().get_info('nick')
 
@@ -1072,11 +1079,11 @@ class XChatCrypt:
         ## if we don't have a key exit
         if not key:
             return xchat.EAT_NONE
-        
+
         ## if the key object is there but the key deleted or marked not active...and force is not set by command like /msg+ or /notice+
         if key.key == None or (key.active == False and not force):
             return xchat.EAT_NONE
-        
+
         ## if the message is marked with the plaintextmarker (default +p) don't encrypt
         if message.startswith(self.config['PLAINTEXTMARKER']):
             ## remove the plaintextmarker from the message
@@ -1092,8 +1099,8 @@ class XChatCrypt:
                 sendmessages.append(self.encrypt(key,cutmsg[:maxlen]))
                 messages.append(cutmsg[:maxlen])
                 cutmsg = cutmsg[maxlen:]
-            ## mark the nick with ° for encrypted messages
-            nick = "%s %s" % ("°"*(1+key.cbc_mode),nick)
+            ## mark the nick with red + for encrypted messages
+            nick = "%s%s" % ("\0034+\003"*(1+key.cbc_mode),nick)
 
         #print "DEBUG(outMsg2): %r %r %r %r" % (command,message,nick,target)
 
@@ -1106,20 +1113,20 @@ class XChatCrypt:
             xchat.command('%s %s :%s' % (command,target, sendmsg))
             ## release the lock
             self.__lock_proc(False)
-        
+
         for message in messages:
             ## if it is no notice it must be send plaintext to xchat for you
             if command == "PRIVMSG":
                 if action:
-                    self.emit_print('Channel Action',  nick, message)
+                    self.emit_print('Channel Action',  nick, message.lstrip())
                 else:
                     targetTab= xchat.find_context(channel=target)
                     if not targetTab and targetTab != xchat.get_context():
-                        self.emit_print('Message Send',  "%s %s" % ("°"*(1+key.cbc_mode),target), message)
+                        self.emit_print('Message Send',  "%s%s" % ("\0034+\003"*(1+key.cbc_mode),target), message.lstrip())
                     else:
-                        self.emit_print('Your Message',  nick, message,toContext=targetTab)
+                        self.emit_print('Your Message',  nick, message.lstrip(),toContext=targetTab)
         return xchat.EAT_ALL
-        
+
     def encrypt(self,key, msg):
         if key.cbc_mode:
             encrypt_clz = BlowfishCBC
@@ -1218,7 +1225,7 @@ class XChatCrypt:
         key = self.find_key(id)
         if len(word_eol) < 2:
             print "usage: /PRNCRYPT <msg to encrypt>"
-        else:    
+        else:
             if key:
                 print "%s%s" % (COLOR['blue'],self.encrypt(key,word_eol[1]))
             else:
@@ -1232,7 +1239,7 @@ class XChatCrypt:
         key = self.find_key(id)
         if len(word_eol) < 2:
             print "usage: /PRNDECRYPT <msg to decrypt>"
-        else:    
+        else:
             if key:
                 print "%s%s" % (COLOR['blue'],self.decrypt(key,word_eol[1]))
             else:
@@ -1244,7 +1251,7 @@ class XChatCrypt:
     def set_key(self,word, word_eol, userdata):
         id = self.get_id()
         target, network = id
-        
+
         ## if more than 2 parameter the nick/channel target is set to para 1 and the key is para 2
         if len(word) > 2:
             target = word[1]
@@ -1260,7 +1267,7 @@ class XChatCrypt:
             return xchat.EAT_ALL
         ## get the Keyobject if available or get a new one
         key = self.find_key(id,create=SecretKey(None,protectmode=self.config['DEFAULTPROTECT'],cbcmode=self.config['DEFAULTCBC']))
-        ## set the key 
+        ## set the key
         key.key = newkey
         key.keyname = id
         ## put it in the key dict
@@ -1285,7 +1292,7 @@ class XChatCrypt:
             if target.find("@") > 0:
                 target,network = target.split("@",1)
                 id = target,network
-            else:            
+            else:
                 id = self.get_id(nick=target)
                 target,network = id
             ## try to delete the key
@@ -1320,7 +1327,7 @@ class XChatCrypt:
                 return xchat.EAT_ALL
             ## else get the id for the target
             id = self.get_id(nick=target)
-        
+
         ## get the Key
         key = self.find_key(id)
         if key:
@@ -1343,7 +1350,7 @@ class XChatCrypt:
             print "Channel Exchange not implemented"
             return xchat.EAT_ALL
 
-        ## create DH 
+        ## create DH
         dh = DH1080Ctx()
 
         self.__KeyMap[id] = self.find_key(id,create=SecretKey(dh,protectmode=self.config['DEFAULTPROTECT'],cbcmode=self.config['DEFAULTCBC']))
@@ -1400,7 +1407,7 @@ class XChatCrypt:
             xchat.command('NOTICE %s %s CBC' % (target, dh1080_pack(dh)))
         else:
             xchat.command('NOTICE %s %s' % (target, dh1080_pack(dh)))
-            
+
         ## release the lock
         self.__lock_proc(False)
         self.__KeyMap[id] = key
@@ -1415,7 +1422,7 @@ class XChatCrypt:
         id = self.get_id(nick=self.get_nick(word[0]))
         message = word_eol[3]
         target,network = id
-        ## fixme if not explicit send to the Target the received key is discarded - chan exchange 
+        ## fixme if not explicit send to the Target the received key is discarded - chan exchange
         if id not in self.__KeyMap:
             print "Invalid DH1080 Received from %s on %s" % (target,network)
             return xchat.EAT_NONE
@@ -1480,7 +1487,7 @@ class XChatCrypt:
         if "#" in target:
             print "We don't make channel protection. Sorry!"
             return xchat.EAT_ALL
-        
+
         key = self.find_key(id)
         ## check if there is a key
         if not key:
@@ -1505,7 +1512,7 @@ class XChatCrypt:
             target = word[1]
             mode = word[2]
         else:
-            ## target is current chan/nick 
+            ## target is current chan/nick
             target = None
             if len(word) >1:
                 ## if one parameter set mode to on/off
@@ -1522,7 +1529,7 @@ class XChatCrypt:
                 ## show only
                 print "Encryption is %s" % ((key.active and "on" or "off"),)
             else:
-                ## set mode to on/off 
+                ## set mode to on/off
                 key.active = bool(mode in ONMODES)
                 print "set Encryption for %s to %s" % (target,(key.active == True and "on") or "off")
                 ## save key storage
@@ -1625,15 +1632,15 @@ def cbc_encrypt(func, data, blocksize):
     'func' is a function that encrypts data in ECB mode. 'data' is the
     plaintext. 'blocksize' is the block size of the cipher."""
     assert len(data) % blocksize == 0
-    
+
     IV = os.urandom(blocksize)
     assert len(IV) == blocksize
-    
+
     ciphertext = IV
     for block_index in xrange(len(data) / blocksize):
         xored = xorstring(data[:blocksize], IV)
         enc = func(xored)
-        
+
         ciphertext += enc
         IV = enc
         data = data[blocksize:]
@@ -1645,7 +1652,7 @@ def cbc_encrypt(func, data, blocksize):
 def cbc_decrypt(func, data, blocksize):
     """See cbc_encrypt."""
     assert len(data) % blocksize == 0
-    
+
     IV = data[0:blocksize]
     data = data[blocksize:]
 
@@ -1656,7 +1663,7 @@ def cbc_decrypt(func, data, blocksize):
         plaintext += temp2
         IV = data[0:blocksize]
         data = data[blocksize:]
-    
+
     assert len(plaintext) % blocksize == 0
     return plaintext
 
@@ -1668,20 +1675,20 @@ class Blowfish:
 
     def decrypt(self, data):
         return self.blowfish.decrypt(data)
-    
+
     def encrypt(self, data):
         return self.blowfish.encrypt(data)
 
 
 class BlowfishCBC:
-    
+
     def __init__(self, key=None):
         if key:
             self.blowfish = cBlowfish.new(key)
 
     def decrypt(self, data):
         return cbc_decrypt(self.blowfish.decrypt, data, 8)
-    
+
     def encrypt(self, data):
         return cbc_encrypt(self.blowfish.encrypt, data, 8)
 
@@ -1739,7 +1746,7 @@ def blowcrypt_unpack(msg, cipher):
         plain = cipher.decrypt(raw)
     except ValueError:
         raise MalformedError
-    
+
     return plain.strip('\x00')
 
 ## Mircryption-CBC
@@ -1782,7 +1789,7 @@ p_dh1080 = int('FBE1022E23D213E8ACFA9AE8B9DFAD'
                '83EB68FA07A77AB6AD7BEB618ACF9C'
                'A2897EB28A6189EFA07AB99A8A7FA9'
                'AE299EFA7BA66DEAFEFBEFBF0B7D8B', 16)
-q_dh1080 = (p_dh1080 - 1) / 2 
+q_dh1080 = (p_dh1080 - 1) / 2
 
 def dh1080_b64encode(s):
     """A non-standard base64-encode."""
@@ -1891,7 +1898,7 @@ class DH1080Ctx:
         self.private = 0
         self.secret = 0
         self.state = 0
-        
+
         bits = 1080
         while True:
             self.private = bytes2int(os.urandom(bits/8))
@@ -1926,11 +1933,11 @@ def dh1080_unpack(msg, ctx):
 
             if not 1 < public < p_dh1080:
                 raise MalformedError
-            
+
             if not dh_validate_public(public, q_dh1080, p_dh1080):
                 print invalidmsg
                 pass
-                
+
             ctx.secret = pow(public, ctx.private, p_dh1080)
         except:
             raise MalformedError
@@ -1949,13 +1956,13 @@ def dh1080_unpack(msg, ctx):
             if not dh_validate_public(public, q_dh1080, p_dh1080):
                 print invalidmsg
                 pass
-            
+
             ctx.secret = pow(public, ctx.private, p_dh1080)
         except:
             raise MalformedError
 
     return True
-        
+
 
 def dh1080_secret(ctx):
     """."""
@@ -1999,7 +2006,7 @@ if REQUIRESETUP:
         proxyload(_install_pyBlowfish,useproxy,None)
         return xchat.EAT_ALL
     xchat.hook_command('FISHSETUP', fishsetup)
-else:    
+else:
     loadObj = XChatCrypt()
 
 # vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4
