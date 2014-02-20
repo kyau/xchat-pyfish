@@ -1719,7 +1719,10 @@ def blowcrypt_b64decode(s):
             right |= B64.index(p) << (i * 6)
         for i, p in enumerate(s[6:12]):
             left |= B64.index(p) << (i * 6)
-        res.append( struct.pack('>LL', left, right) )
+        for i in range(0,4):
+            res +=chr(((left & (0xFF << ((3 - i) * 8))) >> ((3 - i) * 8)))
+        for i in range(0,4):
+            res +=chr(((right & (0xFF << ((3 - i) * 8))) >> ((3 - i) * 8)))
         s = s[12:]
     return "".join(res)
 
